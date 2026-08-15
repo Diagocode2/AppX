@@ -1,0 +1,66 @@
+name: Compilar motor de compilación
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Instalar plataforma Android 34 (por si el runner no la trae)
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -name sdkmanager | head -n1)"
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      # NOTA: ya no se descargan aapt2/android.jar a assets/ aquí. Desde que
+      # el usuario los elige en el propio dispositivo (ver BuildTools.kt,
+      # botón "Elegir build tools" en MainActivity), assembleDebug ya no los
+      # necesita — el CI solo tiene que compilar el módulo. scripts/fetch-build-tools.sh
+      # se conserva por si en el futuro se quiere una build "todo incluido"
+      # (ver installFromAssets en BuildTools.kt), pero no se invoca por defecto.
+
+      - name: Compilar el módulo (assembleDebug)
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Validar ZipAligner contra el zipalign real (unit tests)
+        run: |
+          ZIPALIGN="${ANDROID_HOME}/build-tools/34.0.0/zipalign"
+          gradle :app:test -PzipalignPath="${ZIPALIGN}" --stacktrace
+
+      - name: Ejecutar lint (no bloquea el build si falla)
+        run: gradle :app:lintDebug --stacktrace
+        continue-on-error: true
+
+      - name: Subir resultado de compilación
+        uses: actions/upload-artifact@v4
+        with:
+          name: compilador-android-debug
+          path: |
+            app/build/outputs/**/*.apk
+            app/build/reports/lint-results-*.html
+            app/build/reports/tests/**
+            app/build/test-results/**
+          if-no-files-found: warn

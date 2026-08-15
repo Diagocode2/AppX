@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Necesario para invocar aapt2/d8 con ProcessRunner y para leer/escribir
+         los proyectos que este motor compila. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
+    <!-- Para poder abrir el instalador del sistema con el APK que el propio
+         motor generó (ver MainActivity.instalarApkGenerado). Sin esto,
+         Android 8+ bloquea silenciosamente la instalación desde una app de
+         terceros. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:label="IdeAppDV"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.IdeAppDV">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Necesario para pasarle al instalador del sistema una content://
+             URI del APK generado: Android 7+ prohíbe compartir file:// URIs
+             entre apps (FileUriExposedException). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
+

@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">IdeAppDV</string>
+    <string name="boton_elegir_build_tools">Elegir build tools (aapt2 + android.jar)</string>
+    <string name="build_tools_no_configurados">Build tools: no configurados. Elige la carpeta donde tienes aapt2 y android.jar.</string>
+    <string name="build_tools_configurados">Build tools: listos ✓</string>
+    <string name="build_tools_incompletos">Build tools: faltan %1$s dentro de la carpeta elegida.</string>
+    <string name="boton_compilar">Compilar proyecto de prueba</string>
+    <string name="boton_instalar">Instalar APK generado</string>
+    <string name="estado_inicial">Listo para compilar. Toca el botón para correr el motor sobre un proyecto de prueba real (plantilla fija + tu propio keystore de debug).</string>
+</resources>
+

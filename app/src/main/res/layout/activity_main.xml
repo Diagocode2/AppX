@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/botonElegirBuildTools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/boton_elegir_build_tools" />
+
+    <TextView
+        android:id="@+id/textoBuildTools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="12sp"
+        android:text="@string/build_tools_no_configurados" />
+
+    <Button
+        android:id="@+id/botonCompilar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:enabled="false"
+        android:text="@string/boton_compilar" />
+
+    <Button
+        android:id="@+id/botonInstalar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:enabled="false"
+        android:text="@string/boton_instalar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:id="@+id/textoEstado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:text="@string/estado_inicial" />
+
+    </ScrollView>
+
+</LinearLayout>
+
