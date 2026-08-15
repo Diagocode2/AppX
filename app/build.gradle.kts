@@ -1,4 +1,3 @@
-
 // ---------------------------------------------------------------------------
 // Módulo "app": el motor de compilación + una Activity mínima para poder
 // instalarlo y probarlo en un teléfono real. La UI corre el pipeline
@@ -34,7 +33,7 @@ val extraerKotlinStdlib = tasks.register<Copy>("extraerKotlinStdlib") {
     from(kotlinStdlibParaClasspath)
     into(layout.buildDirectory.dir("generated/kotlin-tools"))
     rename { "kotlin-stdlib.jar" }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE  // ← Línea agregada
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.named("preBuild") {
@@ -103,6 +102,10 @@ android {
                 "META-INF/NOTICE.txt",
                 "module-info.class"
             )
+            // ✅ SOLUCIÓN PARA EL ERROR DE kotlin/internal/internal.kotlin_builtins
+            // Esto le dice a Gradle que use el primer archivo que encuentre
+            // y ignore los duplicados, que es seguro para este archivo interno
+            pickFirsts += "kotlin/internal/internal.kotlin_builtins"
         }
     }
 
