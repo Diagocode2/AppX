@@ -1,3 +1,4 @@
+
 // ---------------------------------------------------------------------------
 // Módulo "app": el motor de compilación + una Activity mínima para poder
 // instalarlo y probarlo en un teléfono real. La UI corre el pipeline
@@ -33,6 +34,7 @@ val extraerKotlinStdlib = tasks.register<Copy>("extraerKotlinStdlib") {
     from(kotlinStdlibParaClasspath)
     into(layout.buildDirectory.dir("generated/kotlin-tools"))
     rename { "kotlin-stdlib.jar" }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE  // ← Línea agregada
 }
 
 tasks.named("preBuild") {
