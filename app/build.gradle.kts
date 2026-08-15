@@ -47,7 +47,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tuapp.compilador"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "0.1"
