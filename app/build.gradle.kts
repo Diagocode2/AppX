@@ -102,10 +102,18 @@ android {
                 "META-INF/NOTICE.txt",
                 "module-info.class"
             )
-            // ✅ SOLUCIÓN PARA EL ERROR DE kotlin/internal/internal.kotlin_builtins
-            // Esto le dice a Gradle que use el primer archivo que encuentre
-            // y ignore los duplicados, que es seguro para este archivo interno
-            pickFirsts += "kotlin/internal/internal.kotlin_builtins"
+            
+            // ✅ SOLUCIÓN PARA EL ERROR DE mergeDebugJavaResource
+            // El conflicto ocurre porque tanto kotlin-compiler-embeddable como 
+            // kotlin-stdlib incluyen archivos .kotlin_builtins duplicados.
+            // pickFirsts le dice a Gradle que use el primer archivo que encuentre
+            // e ignore los duplicados, lo cual es seguro para estos archivos internos.
+            pickFirsts += setOf(
+                "kotlin/internal/internal.kotlin_builtins",
+                "kotlin/reflect/reflect.kotlin_builtins",
+                // Por si hay otros archivos .kotlin_builtins que causen conflicto
+                "**/*.kotlin_builtins"
+            )
         }
     }
 
