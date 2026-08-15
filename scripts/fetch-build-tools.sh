@@ -16,13 +16,24 @@
 # traducción, descarga el zip que corresponda, y extrae solo el binario
 # aapt2 de adentro.
 #
-# android.jar NO sale de aquí: se copia directamente del Android SDK ya
-# instalado en el runner de CI (ver .github/workflows/build.yml), que es la
-# fuente oficial y evita cualquier duda de procedencia.
+# android.jar NO sale de aquí: la tarea "extraerAndroidJar" del
+# build.gradle.kts lo toma directo de android.bootClasspath (el compileSdk
+# que este módulo YA necesita para compilarse a sí mismo), sin descargar
+# nada aparte.
+#
+# ACTUALIZADO: el destino ahora es app/src/main/jniLibs/<abi>/, NO
+# assets/build-tools/<abi>/. aapt2 es un ejecutable, no una librería que se
+# lea con InputStream, así que en Android 10+ SOLO puede correr si se
+# extrae desde jniLibs a nativeLibraryDir al instalar el APK — un archivo
+# copiado a mano a filesDir/ (como se hacía antes desde assets/ o desde un
+# árbol SAF) da "Permission denied (error=13)" sin excepción, por más
+# chmod +x que se le ponga (ver el comentario grande en BuildTools.kt).
+# Por eso el binario también se renombra a "libaapt2.so": AGP solo empaqueta
+# y extrae archivos con ese patrón de nombre dentro de jniLibs/.
 #
 # Uso:
 #   scripts/fetch-build-tools.sh <carpeta-destino>
-#   (normalmente: app/src/main/assets/build-tools)
+#   (normalmente: app/src/main/jniLibs)
 # -----------------------------------------------------------------------------
 set -uo pipefail
 # OJO: a propósito NO uso "set -e" en todo el script. Con -e, cualquier
@@ -31,7 +42,7 @@ set -uo pipefail
 # que mi propio código de manejo de errores llegue a imprimir nada. Prefiero
 # comprobar el código de salida de cada paso a mano y decidir yo qué hacer.
 
-DEST="${1:?Uso: fetch-build-tools.sh <carpeta destino, ej. app/src/main/assets/build-tools>}"
+DEST="${1:?Uso: fetch-build-tools.sh <carpeta destino, ej. app/src/main/jniLibs>}"
 REPO="lzhiyong/android-sdk-tools"
 API="https://api.github.com/repos/${REPO}/releases/latest"
 WORKDIR="$(mktemp -d)"
@@ -159,9 +170,13 @@ for abi in "${!ARCH_DE_ABI[@]}"; do
         continue
     fi
 
-    cp "$aapt2_encontrado" "${DEST}/${abi}/aapt2"
-    chmod 755 "${DEST}/${abi}/aapt2"
-    echo "==> aapt2 (${abi}) listo en ${DEST}/${abi}/aapt2"
+    # Nombre "libaapt2.so" a propósito (ver cabecera del script): así AGP lo
+    # reconoce como librería nativa dentro de jniLibs/ y lo empaqueta +
+    # extrae a nativeLibraryDir al instalar, que es el único lugar del
+    # sandbox donde Android 10+ permite ejecutarlo.
+    cp "$aapt2_encontrado" "${DEST}/${abi}/libaapt2.so"
+    chmod 755 "${DEST}/${abi}/libaapt2.so"
+    echo "==> aapt2 (${abi}) listo en ${DEST}/${abi}/libaapt2.so"
     encontrado_alguno=true
 done
 
@@ -172,4 +187,4 @@ if [ "$encontrado_alguno" = false ]; then
     exit 1
 fi
 
-echo "==> aapt2 resuelto. Falta copiar android.jar en cada ${DEST}/<abi>/ (lo hace build.yml)."
+echo "==> aapt2 resuelto y empaquetado en jniLibs. android.jar lo resuelve solo Gradle (extraerAndroidJar)."

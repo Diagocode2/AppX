@@ -10,12 +10,11 @@ import java.io.File
 
 class CompilationEngine(context: android.content.Context) {
 
-    // Ya NO se copian aapt2/android.jar desde assets (eso inflaba el APK a
-    // ~100 MB): el usuario los elige una vez desde su almacenamiento
-    // (MainActivity, botón "Elegir build tools" -> BuildTools.instalarDesdeArbol).
-    // kotlin-stdlib.jar sí se asegura automáticamente aquí (BuildTools.local
-    // ya la instala sola si hace falta): es un jar pequeño y puro que SÍ
-    // viaja embebido como asset, ver BuildTools.kt.
+    // aapt2 va empaquetado dentro del propio APK (jniLibs, ver BuildTools.kt)
+    // y android.jar + kotlin-stdlib.jar se aseguran solos en filesDir/tools/
+    // la primera vez que arranca la app (BuildTools.local ya hace las dos
+    // copias si hacen falta). El APK pesa más por esto a propósito: ya no
+    // depende de que el usuario importe nada desde su almacenamiento.
     private val tools = BuildTools.local(context)
     private val resourceStep = ResourceCompileStep(tools)
     private val kotlinStep = KotlinCompileStep(tools)

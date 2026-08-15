@@ -1,0 +1,17 @@
+Estas 4 carpetas deben contener "libaapt2.so" (el binario aapt2 compilado
+para Android, no el de escritorio), una por ABI:
+
+  arm64-v8a/libaapt2.so
+  armeabi-v7a/libaapt2.so
+  x86_64/libaapt2.so
+  x86/libaapt2.so
+
+Se generan corriendo, desde la raíz del proyecto:
+
+  bash scripts/fetch-build-tools.sh app/src/main/jniLibs
+
+(el CI en .github/workflows/build.yml ya lo hace solo antes de compilar).
+
+Sin estos archivos, assembleDebug compila igual, pero la app instalada
+mostrará "Build tools: falta libaapt2.so" y el botón de compilar quedará
+deshabilitado, porque el motor no tiene aapt2 para ejecutar.

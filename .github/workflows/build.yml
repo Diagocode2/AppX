@@ -35,12 +35,16 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
-      # NOTA: ya no se descargan aapt2/android.jar a assets/ aquí. Desde que
-      # el usuario los elige en el propio dispositivo (ver BuildTools.kt,
-      # botón "Elegir build tools" en MainActivity), assembleDebug ya no los
-      # necesita — el CI solo tiene que compilar el módulo. scripts/fetch-build-tools.sh
-      # se conserva por si en el futuro se quiere una build "todo incluido"
-      # (ver installFromAssets en BuildTools.kt), pero no se invoca por defecto.
+      # aapt2 ahora va EMPAQUETADO dentro del APK (jniLibs/<abi>/libaapt2.so,
+      # ver BuildTools.kt para el porqué): sin este paso, assembleDebug
+      # compila igual pero el APK sale sin aapt2 embebido y la app fallará en
+      # el dispositivo con "Build tools: falta libaapt2.so". android.jar NO
+      # hace falta descargarlo aparte: lo toma solo Gradle del propio
+      # compileSdk (tarea extraerAndroidJar en build.gradle.kts).
+      - name: Descargar aapt2 (todas las ABIs) a jniLibs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/fetch-build-tools.sh app/src/main/jniLibs
 
       - name: Compilar el módulo (assembleDebug)
         run: gradle :app:assembleDebug --stacktrace

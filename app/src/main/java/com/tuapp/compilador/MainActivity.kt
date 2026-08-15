@@ -9,7 +9,6 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.tuapp.compilador.core.BuildTools
@@ -31,26 +30,23 @@ import java.io.File
  * botón "Instalar APK generado" abre el instalador del sistema con el APK
  * que el motor produjo — el cierre real del ciclo: el motor compiló Kotlin
  * de verdad, en el propio teléfono, de punta a punta.
+ *
+ * Ya NO hay picker de carpetas (SAF) para "elegir build tools": aapt2 viene
+ * empaquetado dentro del propio APK (ver BuildTools.kt y
+ * app/src/main/jniLibs/) y android.jar + kotlin-stdlib.jar se extraen solos
+ * de assets/ al arrancar. actualizarEstadoBuildTools() ahora es solo un
+ * chequeo de sanidad (por si el APK no trae libaapt2.so para el ABI de
+ * este dispositivo en particular), no un paso que el usuario deba disparar.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var textoEstado: TextView
     private lateinit var textoBuildTools: TextView
-    private lateinit var botonElegirBuildTools: Button
     private lateinit var botonCompilar: Button
     private lateinit var botonInstalar: Button
     private val ui = Handler(Looper.getMainLooper())
 
     private var apkGenerado: File? = null
-
-    // Picker de carpetas del sistema (Storage Access Framework). El usuario
-    // elige la carpeta donde ya tiene aapt2 + android.jar de antes, así el
-    // APK del propio creador de apps no los trae embebidos (eso es lo que
-    // hacía que pesara ~100 MB). Ver BuildTools.instalarDesdeArbol.
-    private val elegirCarpetaBuildTools =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri != null) instalarBuildToolsDesde(uri)
-        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,13 +54,8 @@ class MainActivity : AppCompatActivity() {
 
         textoEstado = findViewById(R.id.textoEstado)
         textoBuildTools = findViewById(R.id.textoBuildTools)
-        botonElegirBuildTools = findViewById(R.id.botonElegirBuildTools)
         botonCompilar = findViewById(R.id.botonCompilar)
         botonInstalar = findViewById(R.id.botonInstalar)
-
-        botonElegirBuildTools.setOnClickListener {
-            elegirCarpetaBuildTools.launch(null)
-        }
 
         botonCompilar.setOnClickListener {
             botonCompilar.isEnabled = false
@@ -80,50 +71,18 @@ class MainActivity : AppCompatActivity() {
         actualizarEstadoBuildTools()
     }
 
-    /**
-     * Copia aapt2 + android.jar desde la carpeta elegida a filesDir/tools/
-     * (necesario porque un content:// de SAF no se puede ejecutar
-     * directamente; aapt2 necesita ser un archivo real con permiso de
-     * ejecución). Corre en background porque copiar puede tardar un poco.
-     */
-    private fun instalarBuildToolsDesde(uri: Uri) {
-        botonElegirBuildTools.isEnabled = false
-        textoBuildTools.text = "Build tools: copiando..."
-        Thread {
-            try {
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: SecurityException) {
-                // Algunos proveedores de documentos no soportan permisos
-                // persistentes; no es fatal, la copia ya hecha ahora sirve igual.
-            }
-            val faltantes = BuildTools.instalarDesdeArbol(applicationContext, uri)
-            ui.post {
-                botonElegirBuildTools.isEnabled = true
-                actualizarEstadoBuildTools(faltantes)
-            }
-        }.start()
-    }
-
-    private fun actualizarEstadoBuildTools(faltantesTrasElegir: List<String>? = null) {
-        val faltantes = faltantesTrasElegir ?: BuildTools.local(applicationContext).verifyAll()
-        when {
-            faltantes.isEmpty() -> {
-                textoBuildTools.text = getString(R.string.build_tools_configurados)
-                botonCompilar.isEnabled = true
-            }
-            faltantesTrasElegir != null -> {
-                // Ya intentó copiar desde una carpeta y no encontró alguno de los dos.
-                textoBuildTools.text = getString(R.string.build_tools_incompletos, faltantes.joinToString())
-                botonCompilar.isEnabled = false
-            }
-            else -> {
-                // Arranque de la app: aún no se eligió ninguna carpeta.
-                textoBuildTools.text = getString(R.string.build_tools_no_configurados)
-                botonCompilar.isEnabled = false
-            }
+    private fun actualizarEstadoBuildTools() {
+        val faltantes = BuildTools.local(applicationContext).verifyAll()
+        if (faltantes.isEmpty()) {
+            textoBuildTools.text = getString(R.string.build_tools_configurados)
+            botonCompilar.isEnabled = true
+        } else {
+            // No debería pasar en un build normal: significa que el APK no
+            // trae libaapt2.so para el ABI de este dispositivo, o que faltó
+            // correr scripts/fetch-build-tools.sh antes de compilar el
+            // propio creador de apps.
+            textoBuildTools.text = getString(R.string.build_tools_incompletos, faltantes.joinToString())
+            botonCompilar.isEnabled = false
         }
     }
 

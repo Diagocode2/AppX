@@ -36,8 +36,24 @@ val extraerKotlinStdlib = tasks.register<Copy>("extraerKotlinStdlib") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+// ---------------------------------------------------------------------------
+// android.jar YA NO se copia desde una carpeta elegida por el usuario (SAF):
+// se empaqueta directo en el APK, igual que kotlin-stdlib.jar arriba. La
+// fuente es el propio android.jar del compileSdk que este módulo YA
+// necesita para compilarse a sí mismo (android.bootClasspath) — no hace
+// falta descargar nada aparte, es el mismo jar que usa Gradle/AGP.
+// BuildTools.asegurarAndroidJar() lo extrae de assets/ a filesDir/tools/ la
+// primera vez que arranca la app, igual que con kotlin-stdlib.jar.
+// ---------------------------------------------------------------------------
+val extraerAndroidJar = tasks.register<Copy>("extraerAndroidJar") {
+    from(android.bootClasspath.filter { it.name == "android.jar" }.take(1))
+    into(layout.buildDirectory.dir("generated/kotlin-tools"))
+    rename { "android.jar" }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 tasks.named("preBuild") {
-    dependsOn(extraerKotlinStdlib)
+    dependsOn(extraerKotlinStdlib, extraerAndroidJar)
 }
 
 android {
@@ -117,17 +133,40 @@ android {
         }
     }
 
-    // Aquí es donde BuildTools.instalarDesdeArbol() copia aapt2 + android.jar
-    // en tiempo de ejecución (el usuario los elige desde su almacenamiento,
-    // ver MainActivity, botón "Elegir build tools") y donde
-    // BuildTools.asegurarKotlinStdlib() copia kotlin-stdlib.jar (este sí
-    // viaja embebido como asset, ver arriba). "gen" se añade como fuente de
-    // assets para que la tarea "extraerKotlinStdlib" definida arriba quede
-    // empaquetada en el APK de IdeAppDV.
+    // "gen" se añade como fuente de assets para que "extraerKotlinStdlib" y
+    // "extraerAndroidJar" (definidas arriba) queden empaquetadas en el APK.
+    // BuildTools.asegurarKotlinStdlib()/asegurarAndroidJar() las copian de
+    // ahí a filesDir/tools/ la primera vez que arranca la app.
+    //
+    // jniLibs.srcDirs("src/main/jniLibs") es donde va aapt2 — ver
+    // scripts/fetch-build-tools.sh y el comentario grande en BuildTools.kt
+    // sobre por qué SOLO desde ahí se puede ejecutar en Android 10+.
     sourceSets {
         getByName("main") {
             assets.srcDirs("src/main/assets")
             assets.srcDir(extraerKotlinStdlib.map { it.destinationDir })
+            assets.srcDir(extraerAndroidJar.map { it.destinationDir })
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // CRÍTICO para que aapt2 pueda ejecutarse: por defecto (AGP moderno,
+    // minSdk >= 23) las librerías nativas se empaquetan COMPRIMIDAS dentro
+    // del APK y ni siquiera se extraen a disco — se mapean en memoria
+    // directo desde el .apk (extractNativeLibs=false). Eso sirve para
+    // librerías .so que se cargan con System.loadLibrary(), pero aapt2 NO
+    // es una librería: es un ejecutable que ProcessBuilder necesita lanzar
+    // como archivo real en disco. useLegacyPackaging=true fuerza a que
+    // installd SÍ lo extraiga a nativeLibraryDir al instalar (que es el
+    // ÚNICO directorio del sandbox de la app exento de la restricción W^X
+    // de SELinux en Android 10+) — de ahí sale el path que usa
+    // BuildTools.aapt2. Sin esto, exactamente el mismo error=13 vuelve a
+    // aparecer aunque aapt2 esté bien empaquetado en jniLibs.
+    // ---------------------------------------------------------------------
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
@@ -136,15 +175,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-
-    // Para registerForActivityResult(ActivityResultContracts.OpenDocumentTree())
-    // en MainActivity, el picker de carpetas del sistema.
-    implementation("androidx.activity:activity-ktx:1.9.0")
-
-    // Para leer la carpeta que el usuario elige con el picker de Storage
-    // Access Framework (BuildTools.instalarDesdeArbol) y copiar de ahí
-    // aapt2 + android.jar, en vez de traerlos embebidos en assets/.
-    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // El compilador de Kotlin en sí, como librería embebida (misma idea que
     // D8/apksig más abajo: nada de invocar un `kotlinc` externo, que no

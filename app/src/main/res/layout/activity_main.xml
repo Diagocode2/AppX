@@ -5,19 +5,12 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <Button
-        android:id="@+id/botonElegirBuildTools"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/boton_elegir_build_tools" />
-
     <TextView
         android:id="@+id/textoBuildTools"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
         android:textSize="12sp"
-        android:text="@string/build_tools_no_configurados" />
+        android:text="@string/build_tools_configurados" />
 
     <Button
         android:id="@+id/botonCompilar"
